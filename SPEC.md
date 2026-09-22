@@ -130,7 +130,7 @@ Two facts are *the same fact* when their text is equal after collapsing whitespa
 | `[observed]` | The product saw it happen: files edited, the timezone of activity, a tool being used. Not asserted by the user. | Medium. True of the past; may no longer hold. |
 | `[inferred]` | The product guessed it from patterns. | Lowest. A reader SHOULD hedge when acting on it and SHOULD prefer to confirm. |
 
-Importers MUST choose a tag for every fact. When the source product does not record provenance (most do not), the importer MUST default to `[inferred]` unless it has a documented reason to do better. The ChatGPT importer, for example, tags a memory `[stated]` when the saved sentence begins with a phrase such as "User said" or "User prefers", because that phrasing is how ChatGPT records explicit user statements; everything else is `[inferred]`. Each importer's rule is documented in its module.
+Importers MUST choose a tag for every fact. When the source product does not record provenance (most do not), the importer MUST default to `[inferred]` unless it has a documented reason to do better. The ChatGPT importer, for example, defaults to `[stated]` because ChatGPT's `bio` tool is only invoked to record what the user shared in conversation, and downgrades to `[inferred]` any sentence containing a hedge ("seems", "likely", "probably"), since that is the model recording a guess. Each importer's rule is documented in its module docstring.
 
 When the same fact appears with different tags, merge keeps the highest-trust tag (`stated` > `observed` > `inferred`).
 
@@ -181,6 +181,7 @@ A conforming validator distinguishes **errors** (the vault violates a MUST; read
 | `empty-fact` | error | A tagged line has no text. |
 | `excluded:<category>` | error | A fact line trips an exclusion detector (§7). |
 | `bad-manifest` | error | Manifest is not valid YAML or fails its schema. |
+| `conflict` | error | An unresolved merge conflict marker (§10). |
 | `spec-version` | error | Manifest major version differs from the validator's. |
 | `untagged-fact` | warning | A bullet with no provenance tag. |
 | `no-facts` | warning | A memory file with no fact lines. |
@@ -211,7 +212,7 @@ A conforming validator distinguishes **errors** (the vault violates a MUST; read
     >>>>>>> b
     ```
 
-  - A merged vault containing conflict markers MUST fail validation (`untagged-fact` on the marker lines plus an explicit `conflict` warning) until a person resolves it.
+  - A merged vault containing conflict markers MUST fail validation (error `conflict` on each marker line) until a person resolves it.
 
 ## 11. Versioning
 

@@ -1,0 +1,2 @@
+- [Ledger Rewrite](project_ledger.md) — event-sourced ledger at /projects/ledger
+- [Git identity](feedback_git.md) — commits as sam

@@ -1,0 +1,6 @@
+# What I know about you
+
+You are a product engineer at a fintech in Manchester. You work four days a week, Monday to Thursday. You seem to prefer terse answers.
+
+## Projects
+- Rewriting the ledger service as an event-sourced system, targeting Q4 2026.

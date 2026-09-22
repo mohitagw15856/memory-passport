@@ -1,0 +1,5 @@
+1. [2025-05-02]. The user likes ice cream and cookies.
+2. [2025-05-04]. The user lives in Seattle.
+3. [2025-06-01]. The user is learning Mandarin.
+- User was diagnosed with asthma as a child.
+The user's manager is called Dana Whitfield.

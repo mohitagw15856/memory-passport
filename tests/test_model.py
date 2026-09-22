@@ -62,8 +62,8 @@ def test_split_frontmatter_errors():
 
 def test_parse_file_and_render_round_trip():
     text = (
-        "---\nname: X\ndescription: Y\nsources:\n- manual\n"
-        "updated: '2026-01-01'\nkind: topic\n---\n\n- [stated] A fact.\n"
+        "---\nname: X\ndescription: Y\nsources: [manual]\n"
+        'updated: "2026-01-01"\nkind: topic\n---\n\n- [stated] A fact.\n'
     )
     mf = parse_file(PurePosixPath("topics/x.md"), text)
     assert mf.name == "X" and mf.kind == "topic" and len(mf.facts) == 1

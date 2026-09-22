@@ -11,6 +11,7 @@ import yaml
 
 from memory_passport import SPEC_VERSION
 from memory_passport.exclusions import scan
+from memory_passport.merge import has_conflict_markers
 from memory_passport.model import (
     FOLDERS,
     MANIFEST_NAME,
@@ -204,6 +205,8 @@ def _check_file(
             )
         seen[k] = p
 
+    for line in has_conflict_markers(mf.body):
+        issues.append(Issue("error", "conflict", p, "unresolved merge conflict marker", line))
     for line in untagged_bullets(mf.body):
         issues.append(
             Issue(

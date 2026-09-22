@@ -32,6 +32,29 @@ BULLET_RE = re.compile(r"^\s*[-*]\s+\S")
 FRONTMATTER_RE = re.compile(r"\A---\r?\n(?P<yaml>.*?)\r?\n---\r?\n?(?P<body>.*)\Z", re.DOTALL)
 
 
+class _FrontmatterDumper(yaml.SafeDumper):
+    """Lists inline (``[a, b]``) and date-like strings double-quoted, so files stay tidy."""
+
+
+def _repr_list(dumper: yaml.SafeDumper, data: list) -> yaml.Node:
+    return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=True)
+
+
+def _repr_str(dumper: yaml.SafeDumper, data: str) -> yaml.Node:
+    style = '"' if re.fullmatch(r"\d{4}-\d{2}-\d{2}", data) else None
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style=style)
+
+
+_FrontmatterDumper.add_representer(list, _repr_list)
+_FrontmatterDumper.add_representer(str, _repr_str)
+
+
+def dump_frontmatter(fm: dict) -> str:
+    return yaml.dump(
+        fm, Dumper=_FrontmatterDumper, sort_keys=False, allow_unicode=True, width=1000
+    ).rstrip()
+
+
 class VaultError(Exception):
     """Raised when a file cannot be parsed at all."""
 
@@ -77,7 +100,7 @@ class MemoryFile:
         return list(self.frontmatter.get("sources") or [])
 
     def render(self) -> str:
-        fm = yaml.safe_dump(self.frontmatter, sort_keys=False, allow_unicode=True).rstrip()
+        fm = dump_frontmatter(self.frontmatter)
         body = self.body.strip("\n")
         return f"---\n{fm}\n---\n\n{body}\n" if body else f"---\n{fm}\n---\n"
 
