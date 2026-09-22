@@ -61,6 +61,7 @@ include = ["memory_passport", "spec", "tests", "examples", "docs", "*.md", "LICE
 
 [tool.ruff]
 line-length = 100
+extend-exclude = ["*.md"]
 target-version = "py311"
 
 [tool.ruff.lint]
