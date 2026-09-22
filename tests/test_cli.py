@@ -66,3 +66,12 @@ def test_unknown_names():
         ).exit_code
         == 2
     )
+
+
+def test_export_budget_flag():
+    r = runner.invoke(app, ["export", str(SAMPLE_VAULT), "--to", "prompt", "--budget", "600"])
+    assert r.exit_code == 0, r.output
+    assert "<user_memory>" in r.output and "- [inferred]" not in r.output
+    assert "dropped" in r.output  # note about trimming goes to stderr, merged by the runner
+    r = runner.invoke(app, ["export", str(SAMPLE_VAULT), "--to", "cursor", "--budget", "600"])
+    assert r.exit_code == 2

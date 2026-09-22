@@ -144,6 +144,10 @@ def export(
             help="File or folder to write; default prints or uses the exporter's name.",
         ),
     ] = None,
+    budget: Annotated[
+        int | None,
+        typer.Option(help="Character budget (prompt exporter): trims lowest-trust facts first."),
+    ] = None,
 ) -> None:
     """Render a vault as the text or files a product accepts."""
     from memory_passport.exporters import get_exporter
@@ -151,6 +155,11 @@ def export(
 
     try:
         exporter = get_exporter(to)
+        if budget is not None:
+            if not hasattr(exporter, "budget"):
+                typer.echo(f"error: --budget is not supported by the {to} exporter", err=True)
+                raise typer.Exit(2)
+            exporter.budget = budget
         v = load_vault(vault)
     except (KeyError, VaultError) as e:
         typer.echo(f"error: {e}", err=True)

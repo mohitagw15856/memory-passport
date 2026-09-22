@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 — 2026-09-22
+
+- Fix: `passport export --budget` was documented but missing from the CLI in 0.2.0.
+
 ## 0.2.0 — 2026-09-22
 
 - `passport show`, `passport add`, `passport forget`: use the vault day to day, not just for migration.

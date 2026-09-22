@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "memory-passport"
-version = "0.2.0"
+version = "0.2.1"
 description = "A portable, plain-text format for AI assistant memory, with converters."
 readme = "README.md"
 license = "MIT"
