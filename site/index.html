@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>memory-passport</title>
+<meta name="description" content="One plain-text format for portable AI assistant memory. Validate a vault or import a memory list right here in your browser; nothing leaves your machine.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%237c3aed'/><circle cx='50' cy='50' r='24' fill='none' stroke='%23fde68a' stroke-width='6'/></svg>">
+<style>
+  :root { --bg:#0f172a; --panel:#1e1b4b; --panel2:#111827; --ink:#e2e8f0; --muted:#94a3b8; --accent:#a78bfa; --ok:#34d399; --warn:#fbbf24; --err:#f87171; --mono: Menlo, Consolas, "Liberation Mono", monospace; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font: 16px/1.5 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  header { padding: 32px 16px 8px; max-width: 1000px; margin: 0 auto; }
+  header img { width:100%; border-radius:16px; }
+  nav { display:flex; gap:8px; flex-wrap:wrap; max-width:1000px; margin:16px auto; padding:0 16px; }
+  nav button { background:var(--panel2); color:var(--ink); border:1px solid #312e81; border-radius:10px; padding:8px 14px; cursor:pointer; font-size:15px; }
+  nav button.active { background:var(--panel); border-color:var(--accent); }
+  main { max-width:1000px; margin:0 auto; padding:0 16px 48px; }
+  section { display:none; } section.active { display:block; }
+  textarea, select, input[type=file] { width:100%; background:var(--panel2); color:var(--ink); border:1px solid #312e81; border-radius:10px; padding:10px; font-family: var(--mono); font-size:14px; }
+  textarea { min-height: 220px; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:12px 0; }
+  .btn { background:#7c3aed; color:#fff; border:0; border-radius:10px; padding:10px 16px; font-size:15px; cursor:pointer; }
+  .btn[disabled] { opacity:.5; cursor:wait; }
+  .btn.ghost { background:transparent; border:1px solid var(--accent); color:var(--accent); }
+  pre { background:var(--panel2); border:1px solid #312e81; border-radius:10px; padding:12px; overflow:auto; font: 13px/1.45 var(--mono); white-space:pre-wrap; }
+  .ok { color:var(--ok);} .warn { color:var(--warn);} .err { color:var(--err);} .muted { color:var(--muted); }
+  #status { font-family: var(--mono); font-size:13px; color:var(--muted); }
+  .file { margin:10px 0; } .file summary { cursor:pointer; font-family:var(--mono); color:var(--accent); }
+  h2 { margin-top:0; } a { color:var(--accent); }
+  .spec { background:var(--panel2); border:1px solid #312e81; border-radius:12px; padding:16px 24px; }
+  .spec table { border-collapse: collapse; } .spec td, .spec th { border:1px solid #312e81; padding:4px 8px; }
+  .spec code { font-family:var(--mono); background:#0b1020; padding:1px 4px; border-radius:4px; }
+  .spec pre { white-space: pre; }
+</style>
+</head>
+<body>
+<header>
+  <img src="docs/assets/banner.svg" alt="memory-passport">
+  <p class="muted">Everything on this page runs in your browser with <a href="https://pyodide.org">Pyodide</a>. Nothing you paste is uploaded anywhere. <span id="status">loading Python…</span></p>
+</header>
+<nav>
+  <button data-tab="validate" class="active">Validate</button>
+  <button data-tab="import">Import</button>
+  <button data-tab="export">Export</button>
+  <button data-tab="spec">Spec</button>
+  <a class="btn ghost" style="margin-left:auto" href="https://github.com/mohitagw15856/memory-passport">GitHub ↗</a>
+</nav>
+<main>
+  <section id="validate" class="active">
+    <h2>Validate a vault</h2>
+    <p>Pick your vault folder, or paste one memory file to check on its own.</p>
+    <div class="row">
+      <input type="file" id="dir" webkitdirectory directory multiple>
+      <button class="btn ghost" id="loadSample">Load the sample vault</button>
+      <label><input type="checkbox" id="strict"> strict</label>
+      <label>stale after <input type="number" id="stale" value="365" style="width:80px"> days</label>
+    </div>
+    <textarea id="single" placeholder="---
+name: Priya Nair
+description: Sam's manager.
+sources: [chatgpt]
+updated: &quot;2026-06-11&quot;
+kind: person
+---
+
+- [stated] Prefers decisions written up as one-page ADRs."></textarea>
+    <div class="row"><button class="btn" id="runValidate" disabled>Validate</button></div>
+    <pre id="validateOut" class="muted">waiting…</pre>
+  </section>
+
+  <section id="import">
+    <h2>Import a memory list</h2>
+    <p>Paste what a product remembers about you. For ChatGPT use <em>Settings → Personalisation → Manage memories</em>; for Claude, <em>Settings → Memory</em>; for Gemini or Copilot, ask it to list everything it has saved. The ChatGPT <code>conversations.json</code> from a data export works too (pick the file).</p>
+    <div class="row">
+      <select id="product" style="width:auto">
+        <option value="chatgpt">ChatGPT</option><option value="claude">Claude</option>
+        <option value="gemini">Gemini</option><option value="copilot">Copilot</option>
+      </select>
+      <input type="file" id="importFile" style="width:auto" accept=".json,.txt,.md,.zip">
+      <label><input type="checkbox" id="route" checked> sort into people / topics / areas</label>
+      <label><input type="checkbox" id="health"> allow health</label>
+    </div>
+    <textarea id="importText" placeholder="1. [2025-05-02]. The user likes ice cream and cookies.
+2. [2025-05-04]. The user lives in Seattle.
+The user's manager is called Dana Whitfield."></textarea>
+    <div class="row"><button class="btn" id="runImport" disabled>Build vault</button><button class="btn ghost" id="downloadZip" disabled>Download vault.zip</button></div>
+    <pre id="importNotes" class="muted"></pre>
+    <div id="importFiles"></div>
+  </section>
+
+  <section id="export">
+    <h2>Export</h2>
+    <p>Uses the vault you validated or built on the other tabs (or the sample vault).</p>
+    <div class="row">
+      <select id="target" style="width:auto">
+        <option value="prompt">System prompt (any model)</option><option value="claude">Claude memory import</option>
+        <option value="chatgpt">ChatGPT custom instructions</option><option value="cursor">Cursor rule</option>
+      </select>
+      <label>budget <input type="number" id="budget" placeholder="chars" style="width:90px"></label>
+      <button class="btn" id="runExport" disabled>Render</button>
+      <button class="btn ghost" id="copyExport">Copy</button>
+    </div>
+    <pre id="exportOut" class="muted"></pre>
+  </section>
+
+  <section id="spec">
+    <div class="spec" id="specBody">loading SPEC.md…</div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const pyBool = (b) => (b ? "True" : "False");
+const status = (t, cls="muted") => { const el = $("#status"); el.textContent = t; el.className = cls; };
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.remove("active"));
+  document.querySelectorAll("main section").forEach(x => x.classList.remove("active"));
+  b.classList.add("active"); $("#" + b.dataset.tab).classList.add("active");
+}));
+
+let py = null;
+const VAULT = "/vault";
+
+async function boot() {
+  try {
+    py = await loadPyodide();
+    status("installing memory-passport…");
+    await py.loadPackage(["micropip", "pyyaml", "jsonschema"]);
+    const idx = await (await fetch("wheels/index.json")).json();
+    const micropip = py.pyimport("micropip");
+    await micropip.install(new URL("wheels/" + idx.wheel, location.href).href, {deps: false});
+    await py.runPythonAsync(`
+import os, io, zipfile, json
+from pathlib import Path
+from memory_passport.validate import validate_vault
+from memory_passport.model import load_vault, write_vault, VaultError
+from memory_passport.importers import get_importer, ImportOptions
+from memory_passport.exporters import get_exporter
+
+def _reset(root):
+    import shutil
+    shutil.rmtree(root, ignore_errors=True)
+    Path(root).mkdir(parents=True, exist_ok=True)
+
+def validate(root, strict, stale):
+    r = validate_vault(Path(root), stale_days=int(stale) if stale else None)
+    lines = [str(i) for i in r.issues]
+    ok = r.ok(strict=bool(strict))
+    lines.append(("OK  " if ok else "FAIL  ") + f"{r.file_count} file(s), {r.fact_count} fact(s), {len(r.errors)} error(s), {len(r.warnings)} warning(s)")
+    return json.dumps({"ok": ok, "lines": lines})
+
+def do_import(product, src_path, route, health):
+    imp = get_importer(product)
+    res = imp.load(Path(src_path), ImportOptions(route=bool(route), allow_health=bool(health)))
+    _reset("${VAULT}")
+    write_vault(res.vault, Path("${VAULT}"))
+    files = {str(f.path): f.render() for f in res.vault.files}
+    notes = list(res.notes) + [f"dropped ({c}): {t}" for c, t in res.dropped] + [f"redacted: {t}" for _, t in res.redacted]
+    return json.dumps({"notes": notes, "files": files})
+
+def zip_vault():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for p in Path("${VAULT}").rglob("*"):
+            if p.is_file():
+                z.write(p, "passport/" + str(p.relative_to("${VAULT}")))
+    return buf.getvalue()
+
+def do_export(target, budget):
+    exp = get_exporter(target)
+    if budget and hasattr(exp, "budget"):
+        exp.budget = int(budget)
+    r = exp.render(load_vault(Path("${VAULT}")))
+    return json.dumps({"text": r.single or "\\n".join(r.files.values()), "notes": r.notes})
+`);
+    status("ready", "ok");
+    ["#runValidate", "#runImport", "#runExport"].forEach(s => $(s).disabled = false);
+  } catch (e) {
+    status("could not start Python: " + e, "err");
+  }
+}
+boot();
+
+async function writeTree(files) {
+  py.runPython(`_reset("${VAULT}")`);
+  for (const f of files) {
+    const rel = (f.webkitRelativePath || f.name).split("/").slice(1).join("/") || f.name;
+    if (!rel || rel.startsWith(".")) continue;
+    const parts = rel.split("/"); const dir = VAULT + "/" + parts.slice(0, -1).join("/");
+    py.FS.mkdirTree(dir);
+    py.FS.writeFile(VAULT + "/" + rel, new Uint8Array(await f.arrayBuffer()));
+  }
+}
+
+$("#loadSample").addEventListener("click", async () => {
+  const names = ["passport.yaml","profile.md","preferences.md","people/priya-nair.md","topics/e-ink-devices.md","areas/ledger-rewrite.md"];
+  py.runPython(`_reset("${VAULT}")`);
+  for (const n of names) {
+    const t = await (await fetch("examples/sample-vault/" + n)).text();
+    py.FS.mkdirTree(VAULT + "/" + n.split("/").slice(0,-1).join("/"));
+    py.FS.writeFile(VAULT + "/" + n, t);
+  }
+  $("#validateOut").textContent = "sample vault loaded; click Validate"; $("#single").value = "";
+});
+
+$("#runValidate").addEventListener("click", async () => {
+  const files = $("#dir").files;
+  if (files.length) await writeTree(files);
+  else if ($("#single").value.trim()) {
+    py.runPython(`_reset("${VAULT}")`);
+    py.FS.writeFile(VAULT + "/passport.yaml", 'spec_version: "0.1"\n');
+    const m = $("#single").value.match(/kind:\s*(\w+)/); const kind = m ? m[1] : "profile";
+    const rel = {profile:"profile.md", preferences:"preferences.md", person:"people/subject.md", topic:"topics/subject.md", area:"areas/subject.md"}[kind] || "profile.md";
+    py.FS.mkdirTree(VAULT + "/" + rel.split("/").slice(0,-1).join("/"));
+    py.FS.writeFile(VAULT + "/" + rel, $("#single").value);
+  }
+  try {
+    const r = JSON.parse(py.runPython(`validate("${VAULT}", ${pyBool($("#strict").checked)}, ${$("#stale").value || 0})`));
+    const out = $("#validateOut"); out.className = r.ok ? "ok" : "err";
+    out.innerHTML = r.lines.map(l => `<span class="${l.startsWith("ERROR") ? "err" : l.startsWith("WARN") ? "warn" : ""}">${l.replace(/</g,"&lt;")}</span>`).join("\n");
+  } catch (e) { $("#validateOut").className = "err"; $("#validateOut").textContent = String(e); }
+});
+
+$("#runImport").addEventListener("click", async () => {
+  const product = $("#product").value; let src = "/in/memories.txt";
+  py.FS.mkdirTree("/in");
+  const f = $("#importFile").files[0];
+  if (f) { src = "/in/" + f.name; py.FS.writeFile(src, new Uint8Array(await f.arrayBuffer())); }
+  else py.FS.writeFile(src, $("#importText").value);
+  try {
+    const r = JSON.parse(py.runPython(`do_import("${product}", "${src}", ${pyBool($("#route").checked)}, ${pyBool($("#health").checked)})`));
+    $("#importNotes").textContent = r.notes.join("\n");
+    $("#importFiles").innerHTML = Object.entries(r.files).map(([p, c]) => `<details class="file" open><summary>${p}</summary><pre>${c.replace(/</g,"&lt;")}</pre></details>`).join("");
+    $("#downloadZip").disabled = false;
+  } catch (e) { $("#importNotes").textContent = String(e); }
+});
+
+$("#downloadZip").addEventListener("click", () => {
+  const bytes = py.runPython("zip_vault()").toJs();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([bytes], {type: "application/zip"})); a.download = "passport.zip"; a.click();
+});
+
+$("#runExport").addEventListener("click", () => {
+  try {
+    const r = JSON.parse(py.runPython(`do_export("${$("#target").value}", ${$("#budget").value || 0})`));
+    $("#exportOut").className = ""; $("#exportOut").textContent = (r.notes.length ? "note: " + r.notes.join("; ") + "\n\n" : "") + r.text;
+  } catch (e) { $("#exportOut").className = "err"; $("#exportOut").textContent = "no vault loaded yet: validate a folder, load the sample, or build one on the Import tab.\n" + e; }
+});
+$("#copyExport").addEventListener("click", () => navigator.clipboard.writeText($("#exportOut").textContent));
+
+fetch("SPEC.md").then(r => r.text()).then(t => { $("#specBody").innerHTML = marked.parse(t); }).catch(() => { $("#specBody").innerHTML = '<a href="https://github.com/mohitagw15856/memory-passport/blob/main/SPEC.md">Read SPEC.md on GitHub</a>'; });
+</script>
+</body>
+</html>

@@ -105,3 +105,20 @@ def test_cli_validate(vault: Path):
     result = runner.invoke(app, ["validate", str(vault), "--json"])
     assert result.exit_code == 1
     assert '"bad-frontmatter"' in result.output
+
+
+def test_stale_facts(vault: Path):
+    write(
+        vault,
+        "profile.md",
+        MINIMAL_PROFILE
+        + "- [observed] Commits at 7am. <!-- src: claude-code, 2020-01-01 -->\n"
+        + "- [inferred] Old guess.\n"
+        + "- [stated] Old statement. <!-- src: manual, 2019-01-01 -->\n",
+    )
+    rep = validate_vault(vault, stale_days=200)  # file updated 2026-01-01 is > 200 days ago
+    stale = [i for i in rep.issues if i.code == "stale-fact"]
+    assert len(stale) == 2 and {i.line for i in stale} == {3, 4}  # dated observed, undated inferred
+    assert validate_vault(vault).issues == []
+    r = runner.invoke(app, ["validate", str(vault), "--stale", "200", "--strict"])
+    assert r.exit_code == 1 and "stale-fact" in r.output

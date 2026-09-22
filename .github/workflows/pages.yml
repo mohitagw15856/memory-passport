@@ -1,0 +1,47 @@
+name: Site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv build
+      - name: Assemble site
+        run: |
+          mkdir -p _site/wheels _site/spec _site/examples
+          cp -r site/* _site/
+          cp dist/*.whl _site/wheels/
+          WHEEL=$(basename dist/*.whl)
+          echo "{\"wheel\": \"$WHEEL\"}" > _site/wheels/index.json
+          cp SPEC.md README.md CONTRIBUTING.md _site/
+          cp -r docs _site/docs
+          cp spec/*.json _site/spec/
+          cp -r examples/sample-vault _site/examples/sample-vault
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

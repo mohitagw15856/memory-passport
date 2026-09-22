@@ -15,7 +15,7 @@ def test_import_autodetect_and_export_roundtrip(tmp_path: Path):
     out = tmp_path / "v"
     r = runner.invoke(app, ["import", str(FIX / "chatgpt"), "--out", str(out)])
     assert r.exit_code == 0, r.output
-    assert "found 6 saved memory(ies)" in r.output and "dropped (card-number)" in r.output
+    assert "found 6 saved memory(ies)" in r.output and "redacted:" in r.output
     r = runner.invoke(app, ["validate", str(out)])
     assert r.exit_code == 0, r.output
     r = runner.invoke(app, ["export", str(out), "--to", "claude"])

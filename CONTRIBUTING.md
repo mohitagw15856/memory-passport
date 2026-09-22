@@ -25,6 +25,10 @@ An importer turns a product's export into a `Vault`. Two ways to ship one:
 
 Do not guess. Download an export from the product, open it, and put a **trimmed, fake-data** copy in `tests/fixtures/<product>/`. Every importer in this repo is written against a fixture that mirrors the real file layout. Note where memory actually lives; often it is not where you expect (ChatGPT's is inside `conversations.json`, addressed to a tool called `bio`).
 
+### 1a. Shortcut for products with no export
+
+If the product will only *list* its memories when asked (Gemini, Copilot), subclass `TextListImporter` instead and set `name`, `help` and `prompt`. See `importers/gemini.py`; it is nine lines.
+
 ### 2. Implement the class
 
 ```python

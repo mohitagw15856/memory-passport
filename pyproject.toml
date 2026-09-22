@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "memory-passport"
-version = "0.1.0"
+version = "0.2.0"
 description = "A portable, plain-text format for AI assistant memory, with converters."
 readme = "README.md"
 license = "MIT"
@@ -32,13 +32,19 @@ dependencies = [
 Homepage = "https://github.com/mohitagw15856/memory-passport"
 Issues = "https://github.com/mohitagw15856/memory-passport/issues"
 
+[project.optional-dependencies]
+mcp = ["mcp>=1.2"]
+
 [project.scripts]
 passport = "memory_passport.cli:app"
+passport-mcp = "memory_passport.mcp_server:main"
 
 [project.entry-points."memory_passport.importers"]
 chatgpt = "memory_passport.importers.chatgpt:ChatGPTImporter"
 claude = "memory_passport.importers.claude:ClaudeImporter"
 markdown = "memory_passport.importers.markdown:MarkdownImporter"
+gemini = "memory_passport.importers.gemini:GeminiImporter"
+copilot = "memory_passport.importers.copilot:CopilotImporter"
 
 [project.entry-points."memory_passport.exporters"]
 markdown = "memory_passport.exporters.markdown:MarkdownExporter"
@@ -46,6 +52,7 @@ chatgpt = "memory_passport.exporters.chatgpt:ChatGPTExporter"
 claude = "memory_passport.exporters.claude:ClaudeExporter"
 claude-code = "memory_passport.exporters.claude_code:ClaudeCodeExporter"
 cursor = "memory_passport.exporters.cursor:CursorExporter"
+prompt = "memory_passport.exporters.prompt:PromptExporter"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6"]

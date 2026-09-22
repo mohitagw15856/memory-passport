@@ -82,3 +82,14 @@ def test_expected_kind_and_path_for():
 def test_slugify():
     assert slugify("Priya  Nair!") == "priya-nair"
     assert slugify("   ") == "untitled"
+
+
+def test_fact_key_collapses_phrasings():
+    from memory_passport.model import fact_key
+
+    assert fact_key("User lives in Manchester.") == fact_key("Based in Manchester")
+    assert fact_key("The user is based in Manchester") == fact_key("lives in manchester")
+    assert fact_key("Works at Monzo") == fact_key("User is employed at Monzo.")
+    assert fact_key("Likes tea") == fact_key("User enjoys tea.")
+    assert fact_key("Likes tea") != fact_key("Dislikes tea")
+    assert fact_key("Works four days a week") != fact_key("Works five days a week")

@@ -56,7 +56,9 @@ _SECRET_RE = re.compile(
     r"(sk-(?:proj-|ant-)?[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|"
     r"xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35}|-----BEGIN [A-Z ]*PRIVATE KEY-----)"
 )
-_PASSWORD_RE = re.compile(r"\b(password|passcode|pin)\b\s*(is|:|=)\s*\S+", re.IGNORECASE)
+_PASSWORD_RE = re.compile(
+    r"\b(password|passcode|pin)\b\s*(is|:|=)\s*(?!\[redacted)\S+", re.IGNORECASE
+)
 
 _HEALTH_CONDITIONS = (
     "adhd|autism|autistic|anxiety disorder|depression|depressive|bipolar|schizophreni|ptsd|ocd|"
@@ -70,6 +72,35 @@ _HEALTH_RE = re.compile(
     r"\d+\s?mg\b|" + _HEALTH_CONDITIONS + r")",
     re.IGNORECASE,
 )
+
+
+REDACTABLE: tuple[Category, ...] = ("card-number", "bank-account", "government-id", "secret")
+
+
+def redact(text: str, *, allow_health: bool = False) -> tuple[str, list[Hit]]:
+    """Replace every redactable span with ``[redacted <category>]``.
+
+    Returns the new text and the hits that could *not* be redacted (currently only
+    ``health``, which is a topic rather than a token and so must be dropped instead).
+    """
+    out = text
+    for m in list(_CARD_RE.finditer(out))[::-1]:
+        digits = re.sub(r"\D", "", m.group())
+        if 13 <= len(digits) <= 19 and _luhn_ok(digits):
+            out = out[: m.start()] + "[redacted card-number]" + out[m.end() :]
+    for m in list(_IBAN_RE.finditer(out))[::-1]:
+        compact = m.group().replace(" ", "")
+        if 15 <= len(compact) <= 34 and _iban_ok(compact):
+            out = out[: m.start()] + "[redacted bank-account]" + out[m.end() :]
+    out = _UK_SORT_ACCT_RE.sub("[redacted bank-account]", out)
+    out = _US_SSN_RE.sub("[redacted government-id]", out)
+    out = _UK_NINO_RE.sub("[redacted government-id]", out)
+    out = _ID_KEYWORD_RE.sub(
+        lambda m: m.group(0)[: m.start(4) - m.start(0)] + "[redacted government-id]", out
+    )
+    out = _SECRET_RE.sub("[redacted secret]", out)
+    out = _PASSWORD_RE.sub(lambda m: f"{m.group(1)} {m.group(2)} [redacted secret]", out)
+    return out, scan(out, allow_health=allow_health)
 
 
 def scan(text: str, *, allow_health: bool = False) -> list[Hit]:

@@ -45,3 +45,17 @@ def test_markdown_identity():
     v = load_vault(SAMPLE_VAULT)
     res = get_exporter("markdown").render(v)
     assert res.files["profile.md"] == (SAMPLE_VAULT / "profile.md").read_text()
+
+
+def test_prompt_exporter_and_budget():
+    from memory_passport.exporters.prompt import PromptExporter
+
+    v = load_vault(SAMPLE_VAULT)
+    text = PromptExporter().render(v).single
+    assert text.startswith("<user_memory>") and text.rstrip().endswith("</user_memory>")
+    assert "## person: Priya Nair" in text and "- [inferred]" in text
+    # stated facts precede inferred within a section
+    sec = text.split("## Sam Okafor")[1].split("##")[0]
+    assert sec.index("[stated]") < sec.index("[inferred]")
+    small = PromptExporter(budget=600).render(v)
+    assert len(small.single) <= 600 and small.notes and "- [inferred]" not in small.single

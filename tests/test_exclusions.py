@@ -54,3 +54,28 @@ def test_health_opt_in():
 def test_clean_text():
     assert scan("Product engineer in Manchester who likes tea.") == []
     assert scan("Phone 0161 496 0000, met on 2026-01-02.") == []
+
+
+def test_redact():
+    from memory_passport.exclusions import redact
+
+    t, hits = redact(
+        "Card 4111 1111 1111 1111 and IBAN GB82 WEST 1234 5698 7654 32, SSN 123-45-6789."
+    )
+    assert t == (
+        "Card [redacted card-number] and IBAN [redacted bank-account], "
+        "SSN [redacted government-id]."
+    )
+    assert hits == []
+    t, hits = redact(
+        "Passport number: 123456789; wifi password is hunter2; "
+        "key sk-abcdefghijklmnopqrstuvwxyz1234"
+    )
+    assert (
+        "[redacted government-id]" in t
+        and "password is [redacted secret]" in t
+        and "[redacted secret]" in t
+    )
+    assert hits == []
+    t, hits = redact("Diagnosed with asthma; card 4242 4242 4242 4242")
+    assert "[redacted card-number]" in t and [h.category for h in hits] == ["health"]

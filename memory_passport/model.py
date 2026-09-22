@@ -32,6 +32,35 @@ BULLET_RE = re.compile(r"^\s*[-*]\s+\S")
 FRONTMATTER_RE = re.compile(r"\A---\r?\n(?P<yaml>.*?)\r?\n---\r?\n?(?P<body>.*)\Z", re.DOTALL)
 
 
+# Phrases that mean the same thing for dedupe purposes. Left side is a regex, right side the
+# canonical form. Applied after case-folding, so write them in lower case.
+_SYNONYMS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"^(?:the user|user|you|they|he|she|i)(?:'s)?\s+"), ""),
+    (re.compile(r"^(?:is|are|am)\s+"), ""),
+    (re.compile(r"\b(?:lives|living|based|located|resides|residing) in\b"), "lives in"),
+    (re.compile(r"\b(?:works|working|employed) (?:at|for)\b"), "works at"),
+    (re.compile(r"\b(?:likes|enjoys|loves|is fond of|is keen on)\b"), "likes"),
+    (re.compile(r"\b(?:dislikes|hates|can't stand|cannot stand)\b"), "dislikes"),
+    (re.compile(r"\b(?:prefers|would rather|favours|favors)\b"), "prefers"),
+    (re.compile(r"\b(?:uses|is using|works with)\b"), "uses"),
+    (re.compile(r"\b(?:is learning|learning|studying|is studying)\b"), "learning"),
+    (re.compile(r"\b(?:working on|is working on|building|is building)\b"), "working on"),
+    (re.compile(r"\b(?:the|a|an)\b"), ""),
+]
+_PUNCT_RE = re.compile(r"[^\w\s'-]")
+
+
+def fact_key(text: str) -> str:
+    """Normalised identity for a fact: case-folded, punctuation-free, common phrasings
+    collapsed ("Lives in Leeds" == "User is based in Leeds."). Tags and sources are not
+    part of the key."""
+    s = _PUNCT_RE.sub(" ", text.casefold())
+    s = " ".join(s.split())
+    for pat, repl in _SYNONYMS:
+        s = pat.sub(repl, s)
+    return " ".join(s.split())
+
+
 class _FrontmatterDumper(yaml.SafeDumper):
     """Lists inline (``[a, b]``) and date-like strings double-quoted, so files stay tidy."""
 
@@ -69,8 +98,8 @@ class Fact:
 
     @property
     def key(self) -> str:
-        """Normalised identity used for dedupe and diffing: text only, case-folded."""
-        return " ".join(self.text.split()).casefold().rstrip(".")
+        """Normalised identity used for dedupe and diffing (see :func:`fact_key`)."""
+        return fact_key(self.text)
 
     def render(self) -> str:
         line = f"- [{self.tag}] {self.text}"

@@ -11,8 +11,16 @@ def _builtins() -> list[type[Exporter]]:
     from memory_passport.exporters.claude_code import ClaudeCodeExporter
     from memory_passport.exporters.cursor import CursorExporter
     from memory_passport.exporters.markdown import MarkdownExporter
+    from memory_passport.exporters.prompt import PromptExporter
 
-    return [MarkdownExporter, ChatGPTExporter, ClaudeExporter, ClaudeCodeExporter, CursorExporter]
+    return [
+        MarkdownExporter,
+        PromptExporter,
+        ChatGPTExporter,
+        ClaudeExporter,
+        ClaudeCodeExporter,
+        CursorExporter,
+    ]
 
 
 def list_exporters() -> dict[str, type[Exporter]]:

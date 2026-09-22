@@ -33,6 +33,8 @@ class ImportResult:
     """Human-readable remarks about what was done, printed by the CLI."""
     dropped: list[tuple[str, str]] = field(default_factory=list)
     """``(category, text)`` for every fact removed by an exclusion detector."""
+    redacted: list[tuple[str, str]] = field(default_factory=list)
+    """``("redacted", original_text)`` for every fact kept with a span replaced."""
 
     @property
     def fact_count(self) -> int:

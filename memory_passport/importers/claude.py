@@ -79,7 +79,7 @@ class ClaudeImporter(Importer):
             notes.append(f"split {options.memory_text.name} into {n} sentence(s)")
 
         notes.append(f"dropped {len(b.dropped)} fact(s) by exclusion")
-        return ImportResult(vault=b.build(), notes=notes, dropped=b.dropped)
+        return ImportResult(vault=b.build(), notes=notes, dropped=b.dropped, redacted=b.redacted)
 
 
 def _classify(path: Path) -> str | None:

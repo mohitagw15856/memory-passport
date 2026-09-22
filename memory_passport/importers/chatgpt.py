@@ -77,7 +77,7 @@ class ChatGPTImporter(Importer):
         notes.append(
             f"kept {added} fact(s), dropped {len(b.dropped)} by exclusion or as duplicates"
         )
-        return ImportResult(vault=b.build(), notes=notes, dropped=b.dropped)
+        return ImportResult(vault=b.build(), notes=notes, dropped=b.dropped, redacted=b.redacted)
 
 
 def _load_conversations(path: Path) -> list[dict]:
@@ -99,22 +99,40 @@ def _bio_messages(convs: list[dict]) -> list[Line]:
     for conv in convs:
         for node in (conv.get("mapping") or {}).values():
             msg = (node or {}).get("message") or {}
-            if msg.get("recipient") != "bio":
+            author = msg.get("author") or {}
+            recipient = str(msg.get("recipient") or "")
+            if not (recipient == "bio" or recipient.startswith("bio.")):
                 continue
-            if (msg.get("author") or {}).get("role") != "assistant":
+            if author.get("role") != "assistant":
                 continue
             content = msg.get("content") or {}
             parts = content.get("parts") or []
-            text = " ".join(p for p in parts if isinstance(p, str)).strip()
+            if not parts and isinstance(content.get("text"), str):
+                parts = [content["text"]]
+            text = " ".join(_part_text(p) for p in parts).strip()
             if not text:
                 continue
             ts = msg.get("create_time")
             d: date | None = None
             if isinstance(ts, int | float):
                 d = datetime.fromtimestamp(ts, tz=UTC).date()
+            elif isinstance(ts, str):
+                try:
+                    d = datetime.fromisoformat(ts.replace("Z", "+00:00")).date()
+                except ValueError:
+                    d = None
             for sentence in _split_bio(text):
                 out.append(Line(sentence, d))
     return out
+
+
+def _part_text(p: object) -> str:
+    """Parts are usually strings; newer exports sometimes wrap them in dicts."""
+    if isinstance(p, str):
+        return p
+    if isinstance(p, dict):
+        return str(p.get("text") or p.get("content") or "")
+    return ""
 
 
 def _split_bio(text: str) -> list[str]:

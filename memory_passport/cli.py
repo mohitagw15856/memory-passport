@@ -38,11 +38,15 @@ def validate(
     vault: Annotated[Path, typer.Argument(help="Vault directory to check.")],
     strict: Annotated[bool, typer.Option(help="Treat warnings as failures.")] = False,
     as_json: Annotated[bool, typer.Option("--json", help="Machine-readable output.")] = False,
+    stale: Annotated[
+        int | None,
+        typer.Option(help="Warn about observed/inferred facts older than this many days."),
+    ] = None,
 ) -> None:
     """Check a vault against the spec. Exit code 1 on errors (or warnings with --strict)."""
     from memory_passport.validate import validate_vault
 
-    report = validate_vault(vault)
+    report = validate_vault(vault, stale_days=stale)
     if as_json:
         typer.echo(
             json.dumps(
@@ -123,6 +127,8 @@ def import_(
         typer.echo(f"  {n}")
     for cat, text in result.dropped:
         typer.echo(f"  dropped ({cat}): {text[:60]}{'…' if len(text) > 60 else ''}")
+    for _, text in result.redacted:
+        typer.echo(f"  redacted: {text[:60]}{'…' if len(text) > 60 else ''}")
     typer.echo(f"wrote {len(result.vault.files)} file(s), {result.fact_count} fact(s) to {out}")
 
 
@@ -241,6 +247,118 @@ def diff(
     else:
         typer.echo(d.render(), nl=False)
     raise typer.Exit(0 if d.empty else 1)
+
+
+@app.command()
+def show(
+    vault: Annotated[Path, typer.Argument(help="Vault directory.")],
+    subject: Annotated[
+        str | None, typer.Argument(help="profile, preferences, people/<slug>, a kind, or a name.")
+    ] = None,
+    query: Annotated[str | None, typer.Option("--query", "-q", help="Words to search for.")] = None,
+) -> None:
+    """Print a vault's subjects, one subject, or the facts matching a query."""
+    from memory_passport.model import VaultError, load_vault
+    from memory_passport.store import render_file, render_subjects, search
+
+    try:
+        v = load_vault(vault)
+    except VaultError as e:
+        typer.echo(f"error: {e}", err=True)
+        raise typer.Exit(2) from None
+    if query:
+        hits = search(v, query, subject)
+        for mf, f in hits:
+            typer.echo(f"{mf.path}: {f.render()}")
+        typer.echo(f"{len(hits)} fact(s)", err=True)
+        raise typer.Exit(0 if hits else 1)
+    if subject is None:
+        typer.echo(render_subjects(v), nl=False)
+        return
+    matches = [mf for mf in v.files if _matches(mf, subject)]
+    if not matches:
+        typer.echo(f"error: no subject matches '{subject}'", err=True)
+        raise typer.Exit(1)
+    for mf in matches:
+        typer.echo(render_file(mf))
+
+
+def _matches(mf, subject: str) -> bool:
+    from memory_passport.store import _file_matches
+
+    return _file_matches(mf, subject)
+
+
+@app.command()
+def add(
+    vault: Annotated[Path, typer.Argument(help="Vault directory.")],
+    text: Annotated[str, typer.Argument(help="The fact, one sentence.")],
+    to: Annotated[
+        str | None,
+        typer.Option(
+            "--to",
+            help=(
+                "profile, preferences, people/<slug>, person:<Name>, topic:<Name>, "
+                "area:<Name>. Default: routed from the text."
+            ),
+        ),
+    ] = None,
+    tag: Annotated[str, typer.Option(help="stated, observed or inferred.")] = "stated",
+    section: Annotated[str, typer.Option(help="## heading to file it under.")] = "",
+) -> None:
+    """Append one fact to a vault, dated today, with exclusions applied."""
+    from memory_passport.model import VaultError
+    from memory_passport.store import add_fact
+
+    if tag not in ("stated", "observed", "inferred"):
+        typer.echo("error: --tag must be stated, observed or inferred", err=True)
+        raise typer.Exit(2)
+    try:
+        r = add_fact(vault, text, subject=to, tag=tag, section=section)  # type: ignore[arg-type]
+    except VaultError as e:
+        typer.echo(f"error: {e}", err=True)
+        raise typer.Exit(2) from None
+    if r.dropped:
+        typer.echo(
+            f"refused: looks like {r.dropped}, which the spec excludes (SPEC.md §7)", err=True
+        )
+        raise typer.Exit(1)
+    if r.duplicate:
+        typer.echo(f"already in {r.path}; nothing written")
+        return
+    typer.echo(f"{'created' if r.created_file else 'updated'} {r.path}: {r.fact.render()}")
+    if r.redacted:
+        typer.echo("  a sensitive span was redacted", err=True)
+
+
+@app.command()
+def forget(
+    vault: Annotated[Path, typer.Argument(help="Vault directory.")],
+    text: Annotated[str, typer.Argument(help="The fact to remove (matched loosely).")],
+) -> None:
+    """Remove a fact from a vault by its text."""
+    from memory_passport.store import remove_fact
+
+    removed = remove_fact(vault, text)
+    if not removed:
+        typer.echo("nothing matched", err=True)
+        raise typer.Exit(1)
+    for p, n in removed:
+        typer.echo(f"removed {p}:{n}")
+
+
+@app.command()
+def inspect(
+    source: Annotated[Path, typer.Argument(help="An export zip, folder or file.")],
+) -> None:
+    """Report what an export contains, without importing it. Paste the output into bug reports."""
+    from memory_passport.inspect_export import inspect_path
+
+    if not source.exists():
+        typer.echo(f"error: {source} does not exist", err=True)
+        raise typer.Exit(2)
+    for line in inspect_path(source):
+        typer.echo(line)
 
 
 @app.command()

@@ -60,7 +60,7 @@ class MarkdownImporter(Importer):
                 b.add_alias(r.kind, r.slug, str(alias))
         notes.append(f"read {files} file(s); {promoted} untagged bullet(s) tagged [inferred]")
         notes.append(f"dropped {len(b.dropped)} fact(s) by exclusion")
-        return ImportResult(vault=b.build(), notes=notes, dropped=b.dropped)
+        return ImportResult(vault=b.build(), notes=notes, dropped=b.dropped, redacted=b.redacted)
 
 
 def _route_for(rel: PurePosixPath, fm: dict) -> Route:

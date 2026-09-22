@@ -84,7 +84,7 @@ A passport is designed to be pasted into many products, so it is the worst possi
   <img src="docs/assets/excluded.svg" alt="Excluded categories" width="100%">
 </p>
 
-Importers drop matching facts and tell you. Health is the one opt-in category (`--allow-health`), because an assistant that knows about your dietary restriction is genuinely more useful. The rest have no everyday use. Full reasoning in [SPEC.md §7](SPEC.md#7-excluded-categories).
+Importers redact the span (`has a Monzo card [redacted card-number]`) and tell you, so the useful half of the sentence survives. Health is the one opt-in category (`--allow-health`), because an assistant that knows about your dietary restriction is genuinely more useful. The rest have no everyday use. Full reasoning in [SPEC.md §7](SPEC.md#7-excluded-categories).
 
 <p align="center">
   <img src="docs/assets/validate.gif" alt="passport validate catching a card number, then exporting for Claude" width="90%">
@@ -92,7 +92,7 @@ Importers drop matching facts and tell you. Health is the one opt-in category (`
 
 ## 🔀 Merge without losing, diff without squinting
 
-Two vaults from two products will disagree. `merge` never picks silently: the same fact with different tags keeps the more trusted one, new facts are added, and contradictions get git-style conflict markers that fail validation until you resolve them.
+Two vaults from two products will disagree. `merge` never picks silently: the same fact with different tags keeps the more trusted one, new facts are added, and contradictions get git-style conflict markers that fail validation until you resolve them. "Lives in Manchester" and "User is based in Manchester" count as the same fact; a small phrasing table catches the common rewordings without a model.
 
 <p align="center">
   <img src="docs/assets/merge.gif" alt="passport diff and merge with a conflict" width="90%">
@@ -103,17 +103,47 @@ passport diff vault-a vault-b            # + added, - removed, ~ retagged
 passport merge vault-a vault-b --out merged
 ```
 
+## 🧠 Live memory, not just luggage
+
+Once you have a vault, keep using it. Add facts by hand, ask it questions, and let your assistants read and write it directly over MCP.
+
+```bash
+passport add passport "Priya moved to the Edinburgh office." --to person:Priya
+passport show passport priya
+passport show passport -q "british english"
+passport forget passport "works four days a week"
+passport validate passport --stale 365       # flag observed/inferred facts older than a year
+```
+
+**MCP server.** `pip install "memory-passport[mcp]"` gives you `passport-mcp` with four tools: `list_subjects`, `read_memory`, `remember`, `forget`. Register it once and Claude Code, Cursor or Claude Desktop use the same plain files you edit by hand:
+
+```bash
+claude mcp add passport -e PASSPORT_VAULT=~/passport -- passport-mcp
+```
+
+Everything a client writes goes through the same exclusion and dedupe rules as the CLI. A card number pasted into `remember` comes out as `[redacted card-number]`; a health diagnosis is refused.
+
+**Prompt export.** `passport export passport --to prompt --budget 2000` renders a `<user_memory>` block for any model, API call or agent persona. Over budget, it drops inferred facts first, then observed, then the oldest stated.
+
+## 🌐 Try it in the browser
+
+[mohitagw15856.github.io/memory-passport](https://mohitagw15856.github.io/memory-passport/) runs the real validator, importers and exporters in your browser via Pyodide. Pick a vault folder, paste a memory list, download the result. Nothing is uploaded.
+
 ## 🧭 Every command
 
 | Command | What it does |
 |---|---|
 | `passport validate <dir> [--strict] [--json]` | Check a vault against the spec. Exit 1 on errors. |
-| `passport import <export> [--from chatgpt\|claude\|markdown] [--out dir]` | Build a vault. Auto-detects the source when it can. |
+| `passport import <export> [--from chatgpt\|claude\|gemini\|copilot\|markdown] [--out dir]` | Build a vault. Auto-detects the source when it can. |
 | `passport import … --memory-text memories.txt` | Combine an export with a pasted memory list. |
 | `passport import … --no-route` | Skip the people/topics/areas sorting; everything in `profile.md`. |
-| `passport export <dir> --to chatgpt\|claude\|claude-code\|cursor\|markdown [--out path]` | Paste-ready text or files for that product. |
+| `passport export <dir> --to prompt\|chatgpt\|claude\|claude-code\|cursor\|markdown [--out path] [--budget N]` | Paste-ready text or files for that product. |
 | `passport merge <a> <b> --out merged` | Merge with conflict markers. Exit 3 if any conflicts. |
 | `passport diff <a> <b> [--json]` | Fact-level diff. Exit 1 if they differ. |
+| `passport show <dir> [subject] [-q words]` | List subjects, print one, or search facts. |
+| `passport add <dir> "fact" [--to subject] [--tag] [--section]` | Append one dated fact, with exclusions applied. |
+| `passport forget <dir> "fact"` | Remove a fact by text (loose match). |
+| `passport inspect <export>` | Say what an export contains without importing it. Paste into bug reports. |
 | `passport importers` / `passport exporters` | List what is installed, including plugins. |
 
 ## 🧳 Where the memories actually are
@@ -126,7 +156,8 @@ Getting memory *out* of products is the annoying part. Here is what each one rea
 | **Claude** (claude.ai) | Copy from *Settings → Memory*, or ask it to write memories out verbatim. Data export has projects but no memory. | Yes: *Settings → Memory → Start import* (experimental). | prose summary | none | by topic in the summary | edit the summary text | "include sensitive topics" toggle |
 | **Claude Code** | It is already files: `~/.claude/projects/<p>/memory/*.md` with frontmatter. | Drop files in the folder. | markdown files | none, but a `type` field | one file per memory | yes | none |
 | **Cursor** | No user memory; project rules in `.cursor/rules/*.mdc`. | Write a rule file. | rule files per repo | none | per repo | yes | none |
-| **Gemini** | No export. | No. | Saved Info list | none | none | via settings UI | delete individual items |
+| **Gemini** | No export. Copy *Saved info* or ask it to list everything; `--from gemini`. | No. | Saved Info list | none | none | via settings UI | delete individual items |
+| **Copilot** | No export. Ask it to list its memories; `--from copilot`. | No. | flat list | none | none | via settings UI | delete individual items |
 | **Hermes Agent / custom bots** | Whatever you built; usually a markdown folder. | Same. | your call | your call | your call | yes | your call |
 | **memory-passport** | It *is* the export. | It *is* the import. | `profile.md`, `preferences.md`, `people/`, `topics/`, `areas/` | `[stated]` `[observed]` `[inferred]` + per-fact source and date | one file per subject, five kinds | yes, it is markdown | validator refuses cards, IDs, secrets; health opt-in |
 
@@ -154,7 +185,7 @@ The `examples/sample-vault/` folder is a complete, valid vault to poke at.
 ```bash
 git clone https://github.com/mohitagw15856/memory-passport && cd memory-passport
 uv sync --group dev
-uv run pytest -q          # 55 tests, fixture exports for every importer
+uv run pytest -q          # fixture exports for every importer
 uv run ruff check .
 ```
 

@@ -138,7 +138,7 @@ When the same fact appears with different tags, merge keeps the highest-trust ta
 
 A passport is designed to be pasted into many products, some of which will retain it in their own memory, and it is therefore the worst possible place to keep anything you would not hand to a third party. The spec makes the safe outcome the default rather than relying on every importer to be careful.
 
-The following MUST NOT appear in a fact line. The validator reports them as errors under `excluded:<category>` and conforming importers MUST drop or redact any fact that trips a detector, reporting the count.
+The following MUST NOT appear in a fact line. The validator reports them as errors under `excluded:<category>`. Conforming importers MUST NOT let a matching fact through: for token-shaped categories (card, bank, ID, secret) they SHOULD redact the span to `[redacted <category>]` and keep the rest of the sentence, since "has a Monzo card" is useful and the number is not; for `health`, which is a topic rather than a token, they MUST drop the fact. Either way the count is reported.
 
 | Category | Examples | Why it is excluded rather than merely discouraged |
 |---|---|---|
@@ -213,6 +213,10 @@ A conforming validator distinguishes **errors** (the vault violates a MUST; read
     ```
 
   - A merged vault containing conflict markers MUST fail validation (error `conflict` on each marker line) until a person resolves it.
+
+## 10a. Staleness (informative)
+
+Dates exist so that readers can weigh facts by age. The reference validator's `--stale DAYS` option warns about `[observed]` and `[inferred]` facts older than the given number of days, using the fact's own date or, failing that, the file's `updated`. `[stated]` facts never go stale: what a person said stays said until they say otherwise. Readers MAY apply the same rule when deciding how much to trust an old observation.
 
 ## 11. Versioning
 

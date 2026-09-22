@@ -10,9 +10,11 @@ from memory_passport.importers.base import Importer
 def _builtins() -> list[type[Importer]]:
     from memory_passport.importers.chatgpt import ChatGPTImporter
     from memory_passport.importers.claude import ClaudeImporter
+    from memory_passport.importers.copilot import CopilotImporter
+    from memory_passport.importers.gemini import GeminiImporter
     from memory_passport.importers.markdown import MarkdownImporter
 
-    return [ChatGPTImporter, ClaudeImporter, MarkdownImporter]
+    return [ChatGPTImporter, ClaudeImporter, MarkdownImporter, GeminiImporter, CopilotImporter]
 
 
 def list_importers() -> dict[str, type[Importer]]:

@@ -63,7 +63,8 @@ def test_chatgpt_zip_export(tmp_path: Path):
     assert facts_of(v, "areas/ledger-rewrite.md")
     hiking = v.get("topics/hiking.md")
     assert hiking is not None and hiking.facts[0].tag == "inferred"
-    assert [c for c, _ in res.dropped] == ["card-number"]
+    assert res.dropped == [] and len(res.redacted) == 1
+    assert "User's card number is [redacted card-number]." in facts_of(v, "profile.md")
     # dates come from create_time
     assert v.get("profile.md").facts[0].date.isoformat() == "2025-03-03"
     out = write_vault(v, tmp_path / "vault")
@@ -75,7 +76,7 @@ def test_chatgpt_folder_and_conversations_json():
     assert imp.detect(FIX / "chatgpt")
     assert imp.detect(FIX / "chatgpt" / "conversations.json")
     n = imp.load(FIX / "chatgpt" / "conversations.json", ImportOptions()).fact_count
-    assert n == 5
+    assert n == 6
 
 
 def test_chatgpt_pasted_memories_and_health_opt_in(tmp_path: Path):
@@ -102,7 +103,7 @@ def test_chatgpt_memory_text_option_combines():
         FIX / "chatgpt" / "conversations.json",
         ImportOptions(memory_text=FIX / "chatgpt" / "memories.txt"),
     )
-    assert res.fact_count == 5 + 4
+    assert res.fact_count == 6 + 4
 
 
 def test_claude_export_projects(tmp_path: Path):
@@ -164,3 +165,13 @@ def test_markdown_importer(tmp_path: Path):
     assert dana and dana.frontmatter["aliases"] == ["Dana"] and dana.name == "Dana Whitfield"
     assert "1 untagged bullet(s)" in res.notes[0]
     assert validate_vault(write_vault(v, tmp_path / "v")).ok()
+
+
+def test_gemini_and_copilot_text_importers(tmp_path: Path):
+    for name in ("gemini", "copilot"):
+        imp = get_importer(name)
+        assert imp.detect(FIX / "chatgpt" / "memories.txt")
+        res = imp.load(FIX / "chatgpt" / "memories.txt", ImportOptions())
+        assert res.vault.files[0].sources == [name]
+        assert res.fact_count == 4 and [c for c, _ in res.dropped] == ["health"]
+        assert validate_vault(write_vault(res.vault, tmp_path / name)).ok()

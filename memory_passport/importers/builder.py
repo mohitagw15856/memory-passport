@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path, PurePosixPath
 
-from memory_passport.exclusions import scan
+from memory_passport.exclusions import redact
 from memory_passport.importers.router import PREFERENCES, PROFILE, Route, route
 from memory_passport.model import Fact, MemoryFile, Vault, path_for, render_body
 
@@ -25,6 +25,7 @@ class VaultBuilder:
     allow_health: bool = False
     do_route: bool = True
     dropped: list[tuple[str, str]] = field(default_factory=list)
+    redacted: list[tuple[str, str]] = field(default_factory=list)
     _buckets: dict[PurePosixPath, _Bucket] = field(default_factory=dict)
 
     def add(
@@ -35,10 +36,13 @@ class VaultBuilder:
         section: str = "",
     ) -> bool:
         """Add a fact. Returns False if it was dropped by an exclusion or as a duplicate."""
-        hits = scan(fact.text, allow_health=self.allow_health)
+        new_text, hits = redact(fact.text, allow_health=self.allow_health)
         if hits:
             self.dropped.append((hits[0].category, fact.text))
             return False
+        if new_text != fact.text:
+            self.redacted.append(("redacted", fact.text))
+            fact.text = new_text
         if to is None:
             to = route(fact.text) if self.do_route else PROFILE
         if fact.source is None:

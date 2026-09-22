@@ -61,7 +61,10 @@ class Report:
         return not self.errors and not (strict and self.warnings)
 
 
-def validate_vault(root: Path) -> Report:
+def validate_vault(root: Path, *, stale_days: int | None = None) -> Report:
+    """Validate ``root``. With ``stale_days``, warn about observed/inferred facts older than
+    that many days (by the fact's own date, else the file's ``updated``). Stated facts never
+    go stale: what you said stays said until you say otherwise."""
     root = Path(root)
     issues: list[Issue] = []
     if not root.is_dir():
@@ -105,7 +108,9 @@ def validate_vault(root: Path) -> Report:
     seen_names: dict[tuple[str, str], str] = {}
     for rel in _memory_paths(root):
         file_count += 1
-        n = _check_file(root, rel, issues, allow_health=allow_health, seen=seen_names)
+        n = _check_file(
+            root, rel, issues, allow_health=allow_health, seen=seen_names, stale_days=stale_days
+        )
         fact_count += n
 
     return Report(root, issues, file_count=file_count, fact_count=fact_count)
@@ -115,6 +120,17 @@ def _memory_paths(root: Path) -> list[PurePosixPath]:
     from memory_passport.model import memory_paths
 
     return memory_paths(root)
+
+
+def _as_date(v: object) -> date | None:
+    if isinstance(v, date):
+        return v
+    if isinstance(v, str):
+        try:
+            return date.fromisoformat(v)
+        except ValueError:
+            return None
+    return None
 
 
 def _check_manifest(root: Path, issues: list[Issue]) -> dict:
@@ -156,6 +172,7 @@ def _check_file(
     *,
     allow_health: bool,
     seen: dict[tuple[str, str], str],
+    stale_days: int | None = None,
 ) -> int:
     p = str(rel)
     if rel.parts[0] in FOLDERS and not SLUG_RE.match(rel.stem):
@@ -219,6 +236,23 @@ def _check_file(
         )
     if not mf.facts:
         issues.append(Issue("warning", "no-facts", p, "file contains no fact lines"))
+
+    if stale_days is not None:
+        file_date = _as_date(mf.frontmatter.get("updated"))
+        for fact in mf.facts:
+            if fact.tag == "stated":
+                continue
+            d = fact.date or file_date
+            if d and (date.today() - d).days > stale_days:
+                issues.append(
+                    Issue(
+                        "warning",
+                        "stale-fact",
+                        p,
+                        f"[{fact.tag}] fact dated {d} is older than {stale_days} days",
+                        fact.line_no,
+                    )
+                )
 
     for fact in mf.facts:
         if not fact.text:
