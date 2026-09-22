@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mohitagw15856/memory-passport/spec/manifest.schema.json",
+  "title": "memory-passport vault manifest (passport.yaml)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["spec_version"],
+  "properties": {
+    "spec_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Version of the memory-passport spec this vault follows."
+    },
+    "created": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "exported_by": {
+      "type": "string",
+      "description": "Free text naming the tool that wrote the vault, e.g. memory-passport 0.1.0."
+    },
+    "allow_health": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, the health-information exclusion is not enforced for this vault."
+    }
+  }
+}

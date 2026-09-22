@@ -1,0 +1,70 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "memory-passport"
+version = "0.1.0"
+description = "A portable, plain-text format for AI assistant memory, with converters."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "mohitagw15856" }]
+keywords = ["ai", "memory", "portability", "markdown", "chatgpt", "claude"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Text Processing :: Markup :: Markdown",
+]
+dependencies = [
+  "typer>=0.12",
+  "pyyaml>=6.0",
+  "jsonschema>=4.20",
+]
+
+[project.urls]
+Homepage = "https://github.com/mohitagw15856/memory-passport"
+Issues = "https://github.com/mohitagw15856/memory-passport/issues"
+
+[project.scripts]
+passport = "memory_passport.cli:app"
+
+[project.entry-points."memory_passport.importers"]
+chatgpt = "memory_passport.importers.chatgpt:ChatGPTImporter"
+claude = "memory_passport.importers.claude:ClaudeImporter"
+markdown = "memory_passport.importers.markdown:MarkdownImporter"
+
+[project.entry-points."memory_passport.exporters"]
+markdown = "memory_passport.exporters.markdown:MarkdownExporter"
+chatgpt = "memory_passport.exporters.chatgpt:ChatGPTExporter"
+claude = "memory_passport.exporters.claude:ClaudeExporter"
+claude-code = "memory_passport.exporters.claude_code:ClaudeCodeExporter"
+cursor = "memory_passport.exporters.cursor:CursorExporter"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["memory_passport"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"spec" = "memory_passport/spec"
+
+[tool.hatch.build.targets.sdist]
+include = ["memory_passport", "spec", "tests", "examples", "docs", "*.md", "LICENSE"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
